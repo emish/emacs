@@ -1,0 +1,59 @@
+These are my notes on various emacs stuff. 
+
+To change settings associated with a certain plugin (group), use: 
+
+M-x customize-group RET <name-of-group>
+
+Popular groups are: ecb, emacs, cedet, semantic
+
+--
+CEDET Stuff: 
+ - Doesn't seem to work with anything other than: ELISP, C/C++, Java so far. 
+   http://cedet.sourceforge.net/languagesupport.shtml
+ - In essence, useless for Python, hence the Python section below. 
+
+-- 
+ECB Stuff: 
+ - Primary mouse is default to "Middle", this can be changed through customize ecb tree
+ - Can add new source tree from the customize-group frame
+ - Since ECB is not pre-configured to handle git, I am turning off Version Control(VC)
+   support. 
+
+
+--
+Python Stuff: 
+ - Pymacs: lets you use python in elisp and vice versa
+ - Rope and Ropemacs: General refactoring for Python as well as 
+   python lib and doc support. Should work nicely with ECB. 
+ - YASnippet: Seems to be the dominant templating for Python. 
+ - Auto Complete Mode using Ropemacs as a backend. 
+ - Code checking on the fly with Flymake/PyFlakes. Also Pylint but not yet
+   installed. 
+ - Django support with: django-html-mumamo-mode provides syntax highlighting,
+   indentation of template tags, and nXhtml benefits for Django templates.
+   Also available is Pony mode that enables useful django 
+   shell commands in emacs. Not installed yet. 
+   Recent django-mode and django-html-mode auto-generates views from urls, 
+   but is too auto-ish and restrictive right now. Not installed yet. 
+
+Important python.el mode stuff: 
+python-shift-left, C-c C-<
+Decrease indentation of the region
+python-shift-right, C-c C-<
+Increase indentation of the region
+python-switch-to-python, C-c C-z
+Start (or switch) to a Python shell
+python-send-buffer, C-c C-c
+Run the current buffer in the Python interpreter
+python-send-region, C-c C-r
+Run the selected code in the Python interpreter
+python-describe-symbol, C-c C-f
+Get help on a Python symbol
+
+
+-- 
+Haskell Stuff: 
+ - The haskell-mode and haskell-inferior-mode do a good job of summing up
+   general intellisence features. Just need to remember the shortcuts. 
+
+
