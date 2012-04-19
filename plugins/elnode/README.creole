@@ -1,0 +1,444 @@
+= Elnode =
+
+An attempt to make an EmacsLISP clone of node.js.
+
+
+== Rationale ==
+
+Elnode should be used for making small, personal web services or for
+developing a first draft of a web service you may later do in Clojure
+or Node.js or some other web framework.
+
+Emacs is a very good LISP programming environment as well as a great
+editor. Now that Emacs 24 has lexical scope EmacsLISP is a very
+powerful language. A webserver framework inside such a powerful LISP
+environment therefore makes sense.
+
+
+== Installation ==
+
+Elnode is now packaged in [[http://marmalade-repo.org/packages/elnode|marmalade]]. 
+
+For dealing with package repositories check out the
+[[http://www.emacswiki.org/emacs/ELPA|Emacs Wiki]] but the short version
+is to add the following to your {{{.emacs}}} or your
+{{{.emacs.d/init.el}}}:
+
+{{{
+(add-to-list 
+   'package-archives
+   '("marmalade" . "http://marmalade-repo.org/packages/"))
+}}}
+
+And then do:
+
+{{{
+M-x list-packages
+}}}
+
+find Elnode in the list and press {{{i}}} or {{{ENTER}}} to install it.
+
+If you don't want to use packages you can just install {{{elnode.el}}}
+on your {{{load-path}}} somewhere and:
+
+{{{
+(require 'elnode)
+}}}
+
+== Out of the box ==
+
+When Elnode initializes it automatically starts a webserver.
+
+If you:
+
+{{{
+M-x customize-group
+elnode
+}}}
+
+you can alter a number of variables pertaining to the default configuration.
+
+You can also just ignore it and write your own servers.
+
+
+== How does it work? ==
+
+You can define a handler function:
+
+{{{
+(defun nicferrier-handler (httpcon)
+  "Demonstration function"
+  (elnode-http-start httpcon "200" '("Content-type" . "text/html"))
+  (elnode-http-return httpcon "<html><b>HELLO!</b></html>")
+  )
+}}}
+
+And then start the server:
+
+{{{
+(elnode-start 'nicferrier-handler 8010 "localhost")
+}}}
+
+You can also start the server interactively... you still have to pass
+it a handler function and a port.
+
+=== Stopping the server ===
+
+If you can remember the port you started your server on then you'll be
+able to stop it, like:
+
+{{{
+(elnode-stop 8010)
+}}}
+
+You can also stop interactively:
+
+{{{
+M-x elnode-stop
+}}}
+
+
+
+== API ==
+
+=== elnode-child-process httpcon program &rest args ===
+
+Run the specified process asynchronously and send it's output to the http connection.
+
+//program// is the //program// to run.
+//args// is a list of arguments to pass to the //program//.
+
+It is NOT POSSIBLE to run more than one process at a time
+directed at the same http connection.
+
+
+=== elnode-defer-now handler ===
+
+The function you call to defer processing of the current socket.
+
+Pass in the current //handler//.
+
+FIXME: We could capture the current //handler// somehow? I think the
+point is that whatever signals elnode-defer should be getting
+control back when the deferred is re-processed.
+
+
+=== elnode-defer-or-do guard &rest body ===
+
+Test the //guard// and defer if it suceeds and //body// if it doesn't.
+
+
+=== elnode-dispatcher httpcon url-mapping-table &optional function-404 ===
+
+Dispatch the //httpcon// to the correct function based on the //url-mapping-table//.
+
+//url-mapping-table// is an alist of:
+
+{{{
+ (url-regex . function-to-dispatch)
+}}}
+
+To map the root url you should use:
+
+{{{
+  $
+}}}
+
+[[elnode-dispatcher]] uses [[elnode-normalize-path]] to ensure paths
+end in / so to map another url you should use:
+
+{{{
+  path/$
+}}}
+
+or:
+
+{{{
+  path/subpath/$
+}}}
+
+
+
+=== elnode-error msg &rest args ===
+
+Log //msg// with //args// as an error.
+
+This function is available for handlers to call.  It is also used
+by elnode iteslf.
+
+There is only one error log, in the future there may be more.
+
+
+=== elnode-hostpath-default-handler httpcon ===
+
+A hostpath handler using the [[elnode-hostpath-default-table]] for the match table.
+
+This simply calls [[elnode-hostpath-dispatcher]] with [[elnode-hostpath-default-table]].
+
+
+=== elnode-hostpath-dispatcher httpcon hostpath-mapping-table &optional function-404 ===
+
+Dispatch the //httpcon// to the correct handler based on the //hostpath-mapping-table//.
+
+//hostpath-mapping-table// has a regex of the host and the path slash separated, thus:
+
+{{{
+ ("^localhost/pastebin.*" . pastebin-handler)
+}}}
+
+
+
+=== elnode-http-cookie httpcon name ===
+
+Get the cookie value specified by the //name//.
+
+
+=== elnode-http-header httpcon name ===
+
+Get the header specified by //name// from the header.
+
+
+=== elnode-http-method httpcon ===
+
+Get the PATHINFO of the request.
+
+
+=== elnode-http-param httpcon name ===
+
+Get the //name//d parameter from the request.
+
+
+=== elnode-http-params httpcon ===
+
+Get an alist of the parameters in the request.
+
+If the method is a GET then the parameters are from the url. If
+the method is a POST then the parameters may come from either the
+url or the POST body or both:
+
+{{{
+ POST /path?a=b&x=y
+ a=c
+}}}
+
+would result in:
+
+{{{
+ '(([[a]] [[b]] [[c]])([[x]] . [[y]]))
+}}}
+
+
+
+=== elnode-http-pathinfo httpcon ===
+
+Get the PATHINFO of the request.
+
+
+=== elnode-http-query httpcon ===
+
+Get the QUERY of the request.
+
+
+=== elnode-http-return httpcon &optional data ===
+
+End the response on //httpcon// optionally sending //data// first.
+
+//httpcon// is the http connection which must have had the headers
+sent with [[elnode-http-start]]
+
+//data// must be a string, it's just passed to [[elnode-http-send]].
+
+
+=== elnode-http-send-string httpcon str ===
+
+Send the //str//ing to the HTTP connection.
+
+This is really only a placeholder function for doing transfer-encoding.
+
+
+=== elnode-http-start httpcon status &rest header ===
+
+Start the http response on the specified http connection.
+
+//httpcon// is the HTTP connection being handled.
+//status// is the HTTP //status//, eg: 200 or 404
+//header// is a sequence of (//header//-name . value) pairs.
+
+For example:
+
+{{{
+ (elnode-http-start //httpcon// "200" '("Content-type" . "text/html"))
+}}}
+
+
+
+=== elnode-http-version httpcon ===
+
+Get the PATHINFO of the request.
+
+
+=== elnode-init  ===
+
+Bootstraps the elnode environment when the Lisp is loaded.
+
+It's useful to have elnode start automatically... on Lisp
+load.  If the variable [[elnode-init-port]] is set then this
+function will launch a server on it.
+
+The server is started with [[elnode-hostpath-default-handler]] as
+the handler and listening on [[elnode-init-host]]
+
+
+=== elnode-list-buffers  ===
+
+List the current buffers being managed by elnode.
+
+
+=== elnode-normalize-path httpcon handler ===
+
+A decorator for //handler// that normalizes paths to have a trailing slash.
+
+This checks the //httpcon// path for a trailing slash and sends a 302
+to the slash trailed url if there is none.
+
+Otherwise it calls //handler//.
+
+
+=== elnode-send-400 httpcon ===
+
+A generic 400 handler.
+
+
+=== elnode-send-404 httpcon ===
+
+A generic 404 handler.
+
+
+=== elnode-send-redirect httpcon location ===
+
+Sends a redirect to the specified //location//.
+
+
+=== elnode-start request-handler port host ===
+
+Start the elnode server so that //request-handler// handles requests on //port// on //host//.
+
+Most of the work done by the server is actually done by
+functions, the sentinel function, the log function and a filter
+function.
+
+//request-handler// is a function which is called with the
+request. The function is called with one argument, the
+http-connection.
+
+You can use functions such as elnode-http-start and
+elnode-http-send-body to send the http response.
+
+Example:
+
+{{{
+ (defun nic-server (httpcon)
+   (elnode-http-start 200 '(("Content-Type": "text/html")))
+   (elnode-http-return "<html><b>BIG!</b></html>")
+   )
+ (elnode-start 'nic-server 8000)
+ ;; End
+}}}
+
+You must also specify the //port// to start the server on.
+
+You can optionally specify the //host//name to start the server on,
+this must be bound to a local IP. Some names are special:
+
+{{{
+  local//host//  means 127.0.0.1
+  * means 0.0.0.0
+}}}
+
+specifying an IP is also possible.
+
+Note that although //host// can be specified, elnode does not
+disambiguate on running servers by //host//. So you cannot start 2
+different elnode servers on the same //port// on different //host//s.
+
+
+=== elnode-stop port ===
+
+Stop the elnode server attached to //port//.
+
+
+=== elnode-test-path httpcon docroot handler &optional 404-handler ===
+
+Check that the path requested is above the //docroot// specified.
+
+Call //404-handler// (or default 404 //handler//) on failure and //handler//
+on success.
+
+//handler// is called: //httpcon// //docroot// targetfile
+
+This is used by [[elnode--webserver-//handler//-proc]] in the webservers
+that it creates... but it's also meant to be generally useful for
+other //handler// writers.
+
+
+=== elnode-webserver httpcon ===
+
+A simple webserver that serves documents out of `elnode-webserver-docroot'.
+
+This is just an example of an elnode webserver, but it may be all
+that is needed most of the time.
+
+See [[elnode-webserver-handler-maker]] for more possibilities for
+making webserver functions.
+
+//httpcon// is the HTTP connection to the user agent.
+
+
+=== elnode-webserver-handler-maker &optional docroot extra-mime-types ===
+
+Make a webserver handler possibly with the //docroot// and //extra-mime-types//.
+
+Returns a proc which is the handler. The handler serves files out
+of the //docroot// and marks them with the content types that Emacs
+knows about. You can add extra content types for the webserver
+just by supplying an alist of mime-types and extensions for
+//extra-mime-types//.
+
+The webserver handler also creates file indexes.
+
+The webserver uses [[elnode-test-path]] to make sure that the
+request does not go above the //docroot//.
+
+
+
+
+== But... ==
+
+There's always a but.
+
+Here's a list of buts:
+
+ * the HTTP parsing isn't great, it uses too many regexs
+ * we don't parse any data sent through POST other than form-data
+ * the error handling is absolute rubbish
+
+== To Do? ==
+
+If you're playing with elnode but you can't think of anything to do with it...
+
+ * an elpa repository written with elnode
+ ** turn the package list into html
+ ** allow packages to be downloaded from elnode
+ ** upload of packages will require fixing the request management a little
+ * an emacsclient with elnode
+ ** write a command line client that submits data to the server over HTTP
+ ** it should interact with the emacs user in the same way that emacs server does
+ * a simple wiki engine with elnode
+ ** maybe using a command line wiki templating tool
+ * alter {{{elnode-webserver-handler-maker}}} to do indexing better
+ ** take an optional index producing function?
+ ** take keyword flags that set the behaviour? 
+ ** eg: {{{:doindexes 't }}}
+ * browse-current-buffer
+ ** start an elnode server on some random port exposing the current buffer
+ ** automatically open a browser on the server

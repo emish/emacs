@@ -1,0 +1,10 @@
+* Emacs things
+
+** Customized vars go to specific .el file instead of .emacs
+
+** Split .el files for specific large plugins
+
+** Disable certain plugins when run within terminal
+
+** Create language_support.el for language includes and imports
+
